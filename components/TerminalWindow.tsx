@@ -393,7 +393,8 @@ export default function TerminalWindow() {
                   alt="Folder icon"
                   width={24}
                   height={24}
-                  className="h-auto w-auto rounded-sm"
+                  style={{ width: "auto", height: "auto" }}
+                  className="rounded-sm"
                 />
                 <span
                   className={`font-mono text-base font-medium tracking-wide whitespace-nowrap ${
@@ -410,7 +411,8 @@ export default function TerminalWindow() {
                   alt="Folder icon"
                   width={14}
                   height={14}
-                  className="h-auto w-auto rounded-sm"
+                  style={{ width: "auto", height: "auto" }}
+                  className="rounded-sm"
                 />
                 <span
                   className={`font-mono text-sm font-medium tracking-wide ${
