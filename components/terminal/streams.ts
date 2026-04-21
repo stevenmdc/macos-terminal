@@ -61,7 +61,7 @@ export function buildExecStream(target: string): StreamEvent[] {
       { kind: "line", line: { type: "dim", value: "Running TypeScript checks..." }, delayMs: 240 },
       { kind: "line", line: { type: "success", value: "✓ TypeScript passed" }, delayMs: 260 },
       { kind: "line", line: { type: "out", value: "Route (app)  /" }, delayMs: 180 },
-      { kind: "line", line: { type: "success", value: "● done in 2.8s (exit 0)" }, delayMs: 120 },
+      { kind: "line", line: { type: "dim", value: "● done in 2.8s (exit 0)" }, delayMs: 120 },
     ];
   }
 
@@ -71,7 +71,7 @@ export function buildExecStream(target: string): StreamEvent[] {
       { kind: "line", line: { type: "info", value: "▶ npm run lint" }, delayMs: 120 },
       { kind: "line", line: { type: "dim", value: "Linting project files..." }, delayMs: 320 },
       { kind: "line", line: { type: "success", value: "✓ No lint errors" }, delayMs: 240 },
-      { kind: "line", line: { type: "success", value: "● done in 1.2s (exit 0)" }, delayMs: 100 },
+      { kind: "line", line: { type: "dim", value: "● done in 1.2s (exit 0)" }, delayMs: 100 },
     ];
   }
 
@@ -82,7 +82,7 @@ export function buildExecStream(target: string): StreamEvent[] {
       { kind: "line", line: { type: "out", value: "Changes not staged for commit:" }, delayMs: 180 },
       { kind: "line", line: { type: "dim", value: "  modified: app/page.tsx" }, delayMs: 80 },
       { kind: "line", line: { type: "dim", value: "  modified: components/TerminalWindow.tsx" }, delayMs: 80 },
-      { kind: "line", line: { type: "success", value: "● done in 0.3s (exit 0)" }, delayMs: 100 },
+      { kind: "line", line: { type: "dim", value: "● done in 0.3s (exit 0)" }, delayMs: 100 },
     ];
   }
 
@@ -91,7 +91,7 @@ export function buildExecStream(target: string): StreamEvent[] {
     { kind: "line", line: { type: "info", value: `▶ ${normalized}` }, delayMs: 140 },
     { kind: "line", line: { type: "dim", value: "Executing virtual shell command..." }, delayMs: 280 },
     { kind: "line", line: { type: "success", value: "✓ command completed" }, delayMs: 220 },
-    { kind: "line", line: { type: "success", value: "● done in 0.9s (exit 0)" }, delayMs: 100 },
+    { kind: "line", line: { type: "dim", value: "● done in 0.9s (exit 0)" }, delayMs: 100 },
   ];
 }
 
@@ -118,7 +118,7 @@ export function buildClaudeCodeStream(task: string, cwd: string): StreamEvent[] 
     { kind: "line", line: { type: "success", value: "✓ npm run lint" }, delayMs: 130 },
     { kind: "line", line: { type: "success", value: "✓ npm run build" }, delayMs: 130 },
     { kind: "line", line: { type: "dim", value: "" }, delayMs: 60 },
-    { kind: "line", line: { type: "success", value: "* Done. Ready to apply patch." }, delayMs: 60 },
+    { kind: "line", line: { type: "info", value: "* Done. Ready to apply patch." }, delayMs: 60 },
     { kind: "line", line: { type: "out", value: '> Try "claude code fix lint errors in onboarding flow"' }, delayMs: 60 },
     { kind: "line", line: { type: "dim", value: "? for shortcuts" }, delayMs: 40 },
   ];

@@ -2,24 +2,24 @@ import { CWD_MAP } from "./constants";
 import { buildClaudeCodeStream, buildExecStream } from "./streams";
 import type { CommandFn, LineInput } from "./types";
 
-export const COMMANDS: Record<string, CommandFn> = {
-  help: async () => ({
+export const BUILTIN_COMMANDS: Record<string, CommandFn> = {
+  help: async (_, ctx) => ({
     lines: [
       { type: "info", value: "Available commands" },
       {
         type: "dim",
-        value:
-          "  help  about  whoami  ls  cd  pwd  date  history  état  skills  models  mcp  reasoning  exec  claude  projects  stack  contact  clear",
+        value: `  ${ctx.availableCommands.join("  ")}`,
       },
       { type: "dim", value: "  shortcuts: [tab] autocomplete, [↑↓] history, [ctrl+c|esc] interrupt, [ctrl+l] clear" },
       { type: "dim", value: '  examples: exec npm run build · claude code "design onboarding flow"' },
+      { type: "dim", value: `  command packs: ${ctx.loadedPacks.length} loaded (use 'packs' for details)` },
     ],
   }),
   about: async () => ({
     lines: [
       { type: "out", value: "Steven - solo full-stack maker building practical products." },
       { type: "out", value: "Focus: Next.js, Supabase, Stripe, automation and local AI." },
-      { type: "success", value: "Principle: ship simple, iterate fast, keep ownership." },
+      { type: "info", value: "Principle: ship simple, iterate fast, keep ownership." },
     ],
   }),
   whoami: async () => ({
@@ -73,11 +73,12 @@ export const COMMANDS: Record<string, CommandFn> = {
       { type: "info", value: "Terminal state" },
       { type: "out", value: `cwd        ${ctx.cwd}` },
       { type: "out", value: `history    ${ctx.history.length} commands` },
+      { type: "out", value: `packs      ${ctx.loadedPacks.length} loaded` },
       { type: "dim", value: "runtime    virtual cascade engine enabled" },
       { type: "dim", value: "interrupt  Ctrl+C or Esc" },
     ],
   }),
-  etat: async (_, ctx) => COMMANDS["état"]([], ctx),
+  etat: async (_, ctx) => BUILTIN_COMMANDS["état"]([], ctx),
   skills: async () => ({
     lines: [
       { type: "info", value: "Skill presets (virtual)" },
@@ -130,6 +131,26 @@ export const COMMANDS: Record<string, CommandFn> = {
 
     return {
       stream: buildClaudeCodeStream(args.slice(1).join(" "), ctx.cwd),
+    };
+  },
+  packs: async (_, ctx) => {
+    if (ctx.loadedPacks.length === 0) {
+      return {
+        lines: [
+          { type: "info", value: "No command packs loaded." },
+          { type: "dim", value: "Import a .json pack to add preconfigured virtual commands." },
+        ],
+      };
+    }
+
+    return {
+      lines: [
+        { type: "info", value: "Loaded command packs" },
+        ...ctx.loadedPacks.map((pack) => ({
+          type: "out" as const,
+          value: `  ${pack.title} (${pack.id}) - ${pack.commandCount} commands`,
+        })),
+      ],
     };
   },
   clear: async () => ({ lines: [], clearBefore: true }),

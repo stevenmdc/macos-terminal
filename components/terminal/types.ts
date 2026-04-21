@@ -12,6 +12,8 @@ export type LineInput = Omit<Line, "id">;
 export interface CommandContext {
   cwd: string;
   history: string[];
+  availableCommands: string[];
+  loadedPacks: CommandPackSummary[];
 }
 
 export interface CommandRun {
@@ -26,3 +28,14 @@ export type StreamEvent =
   | { kind: "status"; value: string; delayMs?: number };
 
 export type CommandFn = (args: string[], ctx: CommandContext) => Promise<CommandRun>;
+
+export interface QuickAction {
+  label: string;
+  command: string;
+}
+
+export interface CommandPackSummary {
+  id: string;
+  title: string;
+  commandCount: number;
+}
