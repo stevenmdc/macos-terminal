@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { BUILTIN_COMMANDS } from "./commands";
-import { buildCommandPackRuntime, parseCommandPackJson, type CommandPack } from "./commandPacks";
 import { BASE_QUICK_ACTIONS, BUILTIN_COMMAND_NAMES, CWD_MAP, SPINNER_FRAMES } from "./constants";
 import { parseCommandInput } from "./parser";
 import { isAbortError, linesToSequentialStream, sleep } from "./streams";
-import type { Line, LineInput, QuickAction, StreamEvent } from "./types";
+import type { Line, LineInput, StreamEvent } from "./types";
 
 interface TerminalRuntime {
   lines: Line[];
@@ -18,10 +17,11 @@ interface TerminalRuntime {
   spinnerGlyph: string;
   outputRef: RefObject<HTMLDivElement | null>;
   inputRef: RefObject<HTMLInputElement | null>;
-  quickActions: QuickAction[];
   handleKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  runQuickAction: (action: QuickAction) => void;
-  importCommandPack: (file: File) => Promise<void>;
+}
+
+interface ExecuteOptions {
+  execStateIndicator?: boolean;
 }
 
 export function useTerminalRuntime(): TerminalRuntime {
@@ -38,36 +38,21 @@ export function useTerminalRuntime(): TerminalRuntime {
   const [history, setHistory] = useState<string[]>([]);
   const [, setHistoryIndex] = useState(-1);
   const [cwd, setCwd] = useState<string>(initialCwd);
-  const [commandPacks, setCommandPacks] = useState<CommandPack[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState("running...");
   const [spinnerFrameIndex, setSpinnerFrameIndex] = useState(0);
 
-  const packRuntime = useMemo(
-    () => buildCommandPackRuntime(commandPacks, BUILTIN_COMMAND_NAMES),
-    [commandPacks],
-  );
   const availableCommands = useMemo(
-    () => [...BUILTIN_COMMAND_NAMES, ...packRuntime.commandNames].sort((a, b) => a.localeCompare(b)),
-    [packRuntime.commandNames],
+    () => [...BUILTIN_COMMAND_NAMES].sort((a, b) => a.localeCompare(b)),
+    [],
   );
   const commandTriggers = useMemo(
-    () => [...BUILTIN_COMMAND_NAMES, ...packRuntime.triggerNames].sort((a, b) => a.localeCompare(b)),
-    [packRuntime.triggerNames],
+    () => [...BUILTIN_COMMAND_NAMES].sort((a, b) => a.localeCompare(b)),
+    [],
   );
   const quickActions = useMemo(() => {
-    const merged: QuickAction[] = [...BASE_QUICK_ACTIONS];
-    const seen = new Set<string>(BASE_QUICK_ACTIONS.map((item) => `${item.label}::${item.command}`));
-    for (const action of packRuntime.quickActions) {
-      const key = `${action.label}::${action.command}`;
-      if (seen.has(key)) {
-        continue;
-      }
-      merged.push(action);
-      seen.add(key);
-    }
-    return merged;
-  }, [packRuntime.quickActions]);
+    return [...BASE_QUICK_ACTIONS];
+  }, []);
 
   const lineIdRef = useRef(initialLines.length);
   const outputRef = useRef<HTMLDivElement>(null);
@@ -103,13 +88,40 @@ export function useTerminalRuntime(): TerminalRuntime {
     setLines((prev) => [...prev, ...newLines.map((line) => ({ ...line, id: nextId() }))]);
   }
 
+  function appendLine(line: LineInput): number {
+    const id = nextId();
+    setLines((prev) => [...prev, { ...line, id }]);
+    return id;
+  }
+
+  function updateLine(id: number, line: LineInput) {
+    setLines((prev) =>
+      prev.map((existing) => {
+        if (existing.id !== id) {
+          return existing;
+        }
+        return { ...existing, ...line, id };
+      }),
+    );
+  }
+
   async function runStream(events: StreamEvent[], signal: AbortSignal) {
+    const progressLineIdByKey = new Map<string, number>();
     for (const event of events) {
       await sleep(event.delayMs ?? 0, signal);
       if (event.kind === "status") {
         setLoadingLabel(event.value);
-      } else {
+      } else if (event.kind === "line") {
         appendLines([event.line]);
+      } else {
+        const existingLineId = progressLineIdByKey.get(event.key);
+        if (typeof existingLineId === "number") {
+          updateLine(existingLineId, event.line);
+          continue;
+        }
+
+        const newLineId = appendLine(event.line);
+        progressLineIdByKey.set(event.key, newLineId);
       }
     }
   }
@@ -118,15 +130,36 @@ export function useTerminalRuntime(): TerminalRuntime {
     commandLabel: string,
     onRun: (signal: AbortSignal) => Promise<void>,
     onErrorMessage: string,
+    options?: ExecuteOptions,
   ) {
     const controller = new AbortController();
     activeRunRef.current = controller;
     setIsLoading(true);
     setLoadingLabel(commandLabel);
     setSpinnerFrameIndex(0);
+    const showExecState = options?.execStateIndicator === true;
+    let execStateLineId: number | null = null;
+    let execStateBlinkVisible = true;
+    let execStateBlinkInterval: ReturnType<typeof setInterval> | null = null;
+    let completedSuccessfully = false;
+
+    if (showExecState) {
+      execStateLineId = appendLine({ type: "info", value: "● exec" });
+      execStateBlinkInterval = setInterval(() => {
+        if (execStateLineId === null) {
+          return;
+        }
+        execStateBlinkVisible = !execStateBlinkVisible;
+        updateLine(execStateLineId, {
+          type: "info",
+          value: `${execStateBlinkVisible ? "●" : " "} exec`,
+        });
+      }, 420);
+    }
 
     try {
       await onRun(controller.signal);
+      completedSuccessfully = true;
     } catch (error) {
       if (isAbortError(error)) {
         appendLines([{ type: "err", value: "^C interrupted" }]);
@@ -134,6 +167,15 @@ export function useTerminalRuntime(): TerminalRuntime {
         appendLines([{ type: "err", value: onErrorMessage }]);
       }
     } finally {
+      if (execStateBlinkInterval) {
+        clearInterval(execStateBlinkInterval);
+      }
+      if (execStateLineId !== null) {
+        updateLine(execStateLineId, {
+          type: completedSuccessfully ? "success" : "err",
+          value: completedSuccessfully ? "● done" : "● interrupted",
+        });
+      }
       if (activeRunRef.current === controller) {
         activeRunRef.current = null;
       }
@@ -146,76 +188,6 @@ export function useTerminalRuntime(): TerminalRuntime {
     if (activeRunRef.current) {
       activeRunRef.current.abort();
     }
-  }
-
-  async function importCommandPack(file: File) {
-    let raw = "";
-    try {
-      raw = await file.text();
-    } catch {
-      appendLines([{ type: "err", value: `failed to read file: ${file.name}` }]);
-      return;
-    }
-
-    const parseResult = parseCommandPackJson(raw);
-    if (!parseResult.ok || !parseResult.pack) {
-      appendLines([
-        { type: "err", value: `invalid command pack: ${file.name}` },
-        ...parseResult.errors.slice(0, 6).map((error) => ({ type: "dim" as const, value: `  - ${error}` })),
-      ]);
-      return;
-    }
-    const pack = parseResult.pack;
-
-    let action: "added" | "updated" = "added";
-    let rejectedForLimit = false;
-    let acceptedCommandCount = 0;
-    let warnings: string[] = [];
-
-    setCommandPacks((prev) => {
-      const existingIndex = prev.findIndex((existingPack) => existingPack.id === pack.id);
-      if (existingIndex === -1 && prev.length >= 20) {
-        rejectedForLimit = true;
-        return prev;
-      }
-
-      const next =
-        existingIndex === -1
-          ? [...prev, pack]
-          : prev.map((existingPack, index) => (index === existingIndex ? pack : existingPack));
-
-      action = existingIndex === -1 ? "added" : "updated";
-      const previewRuntime = buildCommandPackRuntime(next, BUILTIN_COMMAND_NAMES);
-      const summary = previewRuntime.packSummaries.find((item) => item.id === pack.id);
-      acceptedCommandCount = summary?.commandCount ?? 0;
-      warnings = previewRuntime.warnings.filter((warning) => warning.includes(`"${pack.id}"`));
-      return next;
-    });
-
-    if (rejectedForLimit) {
-      appendLines([
-        { type: "err", value: "cannot import more than 20 command packs" },
-        { type: "dim", value: "remove one existing pack id, then import again" },
-      ]);
-      return;
-    }
-
-    const droppedCount = pack.commands.length - acceptedCommandCount;
-    appendLines([
-      {
-        type: "success",
-        value: `${action} pack "${pack.id}" with ${acceptedCommandCount} command${acceptedCommandCount > 1 ? "s" : ""}`,
-      },
-      ...(droppedCount > 0
-        ? [
-            {
-              type: "dim" as const,
-              value: `  ${droppedCount} command${droppedCount > 1 ? "s were" : " was"} skipped due to name conflicts`,
-            },
-          ]
-        : []),
-      ...warnings.slice(0, 3).map((warning) => ({ type: "dim" as const, value: `  ${warning}` })),
-    ]);
   }
 
   async function run(rawInput: string) {
@@ -241,6 +213,71 @@ export function useTerminalRuntime(): TerminalRuntime {
     }
 
     const [cmd, ...args] = parsed;
+
+    if (cmd === "cmds" || cmd === "cmd") {
+      const usageLines: LineInput[] = [
+        { type: "err", value: "usage: cmds | cmds run <id> | cmd <id>" },
+        { type: "dim", value: "example: cmds run 3" },
+      ];
+
+      const listCmds = async () => {
+        const lines: LineInput[] = [
+          { type: "info", value: "Pre-commands" },
+          ...quickActions.map((action, index) => ({
+            type: "out" as const,
+            value: `  ${index + 1}  ${action.label} -> ${action.command}`,
+          })),
+          { type: "dim", value: "Run one with: cmds run <id> or cmd <id>" },
+        ];
+        await executeWithController(
+          "reading pre-commands...",
+          async (signal) => {
+            await runStream(linesToSequentialStream(lines), signal);
+          },
+          "error running command: cmds",
+        );
+      };
+
+      const runQuickCommandAtIndex = async (rawIndex: string | undefined) => {
+        const parsedIndex = Number.parseInt(rawIndex ?? "", 10);
+        if (!Number.isInteger(parsedIndex) || parsedIndex < 1 || parsedIndex > quickActions.length) {
+          await executeWithController(
+            "reading pre-commands...",
+            async (signal) => {
+              await runStream(linesToSequentialStream(usageLines), signal);
+            },
+            "error running command: cmds",
+          );
+          return;
+        }
+
+        await run(quickActions[parsedIndex - 1].command);
+      };
+
+      if (cmd === "cmd" && args.length === 1) {
+        await runQuickCommandAtIndex(args[0]);
+        return;
+      }
+
+      if (args.length === 0 || args[0] === "list") {
+        await listCmds();
+        return;
+      }
+
+      if (args[0] === "run") {
+        await runQuickCommandAtIndex(args[1]);
+        return;
+      }
+
+      await executeWithController(
+        "reading pre-commands...",
+        async (signal) => {
+          await runStream(linesToSequentialStream(usageLines), signal);
+        },
+        "error running command: cmds",
+      );
+      return;
+    }
 
     if (cmd === "cd") {
       const target = args[0];
@@ -340,10 +377,9 @@ export function useTerminalRuntime(): TerminalRuntime {
       cwd,
       history: nextHistory,
       availableCommands,
-      loadedPacks: packRuntime.packSummaries,
     };
 
-    const command = BUILTIN_COMMANDS[cmd] ?? packRuntime.commandMap[cmd];
+    const command = BUILTIN_COMMANDS[cmd];
     if (!command) {
       await executeWithController(
         `running ${cmd}...`,
@@ -393,6 +429,7 @@ export function useTerminalRuntime(): TerminalRuntime {
         }
       },
       `error running command: ${cmd}`,
+      { execStateIndicator: cmd === "exec" },
     );
   }
 
@@ -457,12 +494,6 @@ export function useTerminalRuntime(): TerminalRuntime {
     }
   }
 
-  function runQuickAction(action: QuickAction) {
-    setInputValue("");
-    void run(action.command);
-    inputRef.current?.focus();
-  }
-
   return {
     lines,
     inputValue,
@@ -473,9 +504,6 @@ export function useTerminalRuntime(): TerminalRuntime {
     spinnerGlyph: SPINNER_FRAMES[spinnerFrameIndex],
     outputRef,
     inputRef,
-    quickActions,
     handleKeyDown,
-    runQuickAction,
-    importCommandPack,
   };
 }

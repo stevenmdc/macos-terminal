@@ -1,0 +1,273 @@
+
+<style>
+  :root { --green: #4ade80; --cyan: #22d3ee; --amber: #fbbf24; --red: #f87171; --gray: #6b7280; --white: #f1f5f9; --dim: #94a3b8; }
+  #terminal { background: #0d1117; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 12.5px; padding: 0; overflow: hidden; border: 1px solid #21262d; }
+  .titlebar { background: #161b22; padding: 10px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #21262d; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .titlebar span { color: #6b7280; font-size: 11px; margin-left: 8px; letter-spacing: 0.05em; }
+  #screen { padding: 16px; min-height: 400px; line-height: 1.65; overflow-y: auto; }
+  .line { white-space: pre; display: flex; gap: 0; margin: 0; }
+  .ts { color: #4b5563; min-width: 60px; display: inline-block; }
+  .prompt { color: #4ade80; }
+  .cmd { color: #e2e8f0; }
+  .out { color: #94a3b8; display: block; padding-left: 68px; white-space: pre-wrap; }
+  .ok { color: #4ade80; }
+  .info { color: #22d3ee; }
+  .warn { color: #fbbf24; }
+  .err { color: #f87171; }
+  .dim { color: #4b5563; }
+  .section { color: #7c3aed; font-weight: bold; }
+  .bar-wrap { display: block; padding-left: 68px; margin: 2px 0; }
+  .bar { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; }
+  .progress { display: inline-block; background: #1e2a1e; border: 1px solid #2d4a2d; width: 120px; height: 8px; border-radius: 2px; vertical-align: middle; overflow: hidden; }
+  .fill { height: 100%; background: #4ade80; display: block; border-radius: 2px; }
+  .fill.cyan { background: #22d3ee; }
+  .fill.amber { background: #fbbf24; }
+  .fill.purple { background: #a78bfa; }
+  .cursor { display: inline-block; width: 7px; height: 13px; background: #4ade80; animation: blink 1s step-end infinite; vertical-align: middle; }
+  @keyframes blink { 50% { opacity: 0; } }
+  #controls { display: flex; gap: 8px; padding: 12px 16px; background: #0d1117; border-top: 1px solid #21262d; }
+  button.ctrl { background: transparent; border: 0.5px solid #21262d; color: #6b7280; border-radius: 6px; padding: 5px 12px; font-family: 'Courier New', monospace; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+  button.ctrl:hover { border-color: #4ade80; color: #4ade80; }
+  button.ctrl.active { border-color: #4ade80; color: #4ade80; }
+  .speed-label { color: #4b5563; font-size: 11px; display: flex; align-items: center; margin-left: auto; gap: 6px; }
+</style>
+
+<div id="terminal">
+  <div class="titlebar">
+    <div class="dot" style="background:#ff5f57"></div>
+    <div class="dot" style="background:#ffbd2e"></div>
+    <div class="dot" style="background:#28c840"></div>
+    <span>openclaw@raspberry-ste — agentic-runtime v2.4.0 — session 2026-04-28 08:00:00</span>
+  </div>
+  <div id="screen"></div>
+  <div id="controls">
+    <button class="ctrl" id="btn-play">▶ Run</button>
+    <button class="ctrl" id="btn-pause">⏸ Pause</button>
+    <button class="ctrl" id="btn-reset">↺ Reset</button>
+    <div class="speed-label">
+      speed
+      <input type="range" min="1" max="5" value="3" id="speed" style="width:70px">
+    </div>
+  </div>
+</div>
+
+<script>
+const lines = [
+  { t:'08:00:00', type:'section', text:'══════════════════════════════════════════════════════' },
+  { t:'08:00:00', type:'section', text:'  OPENCLAW AGENTIC RUNTIME  ·  daily-cycle  ·  START' },
+  { t:'08:00:00', type:'section', text:'══════════════════════════════════════════════════════' },
+  { t:'08:00:01', type:'cmd',  text:'$ agent boot --profile=business-full --dry-run=false' },
+  { t:'08:00:01', type:'info', text:'[INIT] Loading skill manifest … 24 skills registered' },
+  { t:'08:00:01', type:'info', text:'[INIT] Connectors: Supabase ✓  Stripe ✓  X-API ✓  LinkedIn ✓  Resend ✓  GPT-Images ✓  Seedance ✓' },
+  { t:'08:00:02', type:'ok',   text:'[INIT] Memory context loaded (7-day rolling window, 4 096 tokens)' },
+  { t:'08:00:02', type:'ok',   text:'[BOOT] Runtime ready. Entering chain-of-thought loop ↓' },
+  { t:'', type:'blank' },
+
+  { t:'08:00:03', type:'section', text:'── PHASE 1 · INBOX & SIGNALS ──────────────────────────' },
+  { t:'08:00:03', type:'cmd',  text:'$ agent exec inbox.scan --sources=gmail,twitter,linkedin' },
+  { t:'08:00:04', type:'info', text:'[SCAN] Gmail: 14 unread  →  3 client threads, 2 support, 9 noise' },
+  { t:'08:00:04', type:'info', text:'[SCAN] Twitter DMs: 6  →  2 collab requests, 1 question, 3 spam' },
+  { t:'08:00:04', type:'info', text:'[SCAN] LinkedIn: 4 new messages, 11 connection requests' },
+  { t:'08:00:05', type:'cmd',  text:'$ agent exec inbox.triage --llm=sonnet --priority=client_first' },
+  { t:'08:00:06', type:'info', text:'[TRIAGE] Priority queue built:' },
+  { t:'08:00:06', type:'out',  text:'  P0  client/thomas@craftco.fr       "devis headless Shopify"' },
+  { t:'08:00:06', type:'out',  text:'  P0  client/sara@bloom.studio       "bug upload STL #3712"' },
+  { t:'08:00:06', type:'out',  text:'  P1  twitter/dm/@devmaker_lu         "collab code-ste ?"' },
+  { t:'08:00:06', type:'out',  text:'  P2  linkedin/msg/@pierre.renard     "intéressé par templates"' },
+  { t:'08:00:07', type:'cmd',  text:'$ agent exec inbox.reply --queue=P0,P1 --tone=pro_fr --auto-send=true' },
+  { t:'08:00:08', type:'info', text:'[REPLY] Drafting thomas@craftco.fr … context: "devis Shopify headless 499€"' },
+  { t:'08:00:09', type:'ok',   text:'[REPLY] ✓ Sent → thomas@craftco.fr (247 words, CTA: lien Calendly)' },
+  { t:'08:00:09', type:'info', text:'[REPLY] Drafting sara@bloom.studio … context: "bug upload #3712 → fixed in v1.4.2"' },
+  { t:'08:00:10', type:'ok',   text:'[REPLY] ✓ Sent → sara@bloom.studio (fix confirmé + changelog link)' },
+  { t:'08:00:10', type:'ok',   text:'[REPLY] ✓ Sent → @devmaker_lu DM (collab brief + deck link)' },
+  { t:'08:00:10', type:'ok',   text:'[PHASE 1] done ·  3 sent · 1 deferred · elapsed 7s' },
+  { t:'', type:'blank' },
+
+  { t:'08:00:11', type:'section', text:'── PHASE 2 · MARKET & TREND SCAN ─────────────────────' },
+  { t:'08:00:11', type:'cmd',  text:'$ agent exec websearch.scan --topics="next.js 15,headless shopify,solopreneur tools,AI dev 2026"' },
+  { t:'08:00:13', type:'info', text:'[SEARCH] Query 1/4 "next.js 15 new features" → 12 sources fetched' },
+  { t:'08:00:14', type:'info', text:'[SEARCH] Query 2/4 "headless shopify hydrogen trends" → 9 sources' },
+  { t:'08:00:15', type:'info', text:'[SEARCH] Query 3/4 "solopreneur tools 2026" → 15 sources' },
+  { t:'08:00:16', type:'info', text:'[SEARCH] Query 4/4 "agentic coding workflows" → 11 sources' },
+  { t:'08:00:17', type:'cmd',  text:'$ agent exec websearch.summarize --output=context/trends_today.md --tokens=1200' },
+  { t:'08:00:18', type:'ok',   text:'[SUMMARY] trends_today.md written  (1 187 tokens)' },
+  { t:'08:00:18', type:'out',  text:'  Top signal: Next.js 15.3 PPR stable → opportunité post technique' },
+  { t:'08:00:18', type:'out',  text:'  Top signal: "vibe coding" backlash → angle solopreneur authentique' },
+  { t:'08:00:18', type:'out',  text:'  Top signal: Shopify Hydrogen 3.0 → angle SEO headless' },
+  { t:'08:00:18', type:'ok',   text:'[PHASE 2] done · elapsed 7s' },
+  { t:'', type:'blank' },
+
+  { t:'08:00:19', type:'section', text:'── PHASE 3 · CONTENT BRAINSTORM ───────────────────────' },
+  { t:'08:00:19', type:'cmd',  text:'$ agent exec content.brainstorm --context=context/trends_today.md --profile=@stevenmdc --count=12' },
+  { t:'08:00:21', type:'info', text:'[BRAINSTORM] LLM chain-of-thought running …' },
+  { t:'08:00:23', type:'info', text:'[BRAINSTORM] 12 concepts generated → scoring RICE …' },
+  { t:'08:00:24', type:'ok',   text:'[BRAINSTORM] Top 5 scored:' },
+  { t:'08:00:24', type:'out',  text:'  #1 [R:9 I:8 C:9 E:8 → 8.5] "Je ship en solo — voici mon stack IA 2026"' },
+  { t:'08:00:24', type:'out',  text:'  #2 [R:8 I:9 C:7 E:9 → 8.3] "Next.js 15 PPR : ce que ça change pour mes templates"' },
+  { t:'08:00:24', type:'out',  text:'  #3 [R:7 I:8 C:8 E:8 → 7.8] "Shopify headless — pourquoi 499€ c\'est pas cher"' },
+  { t:'08:00:24', type:'out',  text:'  #4 [R:8 I:7 C:8 E:7 → 7.5] "Mon agent IA qui tourne pendant que je dors"' },
+  { t:'08:00:24', type:'out',  text:'  #5 [R:6 I:9 C:7 E:8 → 7.5] "3D print + SaaS : le combo side-project 2026"' },
+  { t:'08:00:25', type:'cmd',  text:'$ agent exec content.select --pick=1,4 --reason="build-in-public + agent story = peak audience fit"' },
+  { t:'08:00:25', type:'ok',   text:'[SELECT] 2 concepts retenus pour production today' },
+  { t:'08:00:25', type:'ok',   text:'[PHASE 3] done · elapsed 6s' },
+  { t:'', type:'blank' },
+
+  { t:'08:00:26', type:'section', text:'── PHASE 4 · CONTENT WRITING ──────────────────────────' },
+  { t:'08:00:26', type:'cmd',  text:'$ agent exec content.write --concepts=1,4 --formats=thread_x,post_linkedin,short_video_script' },
+  { t:'08:00:27', type:'info', text:'[WRITE] Concept #1 → X thread (12 tweets) …' },
+  { t:'08:00:29', type:'ok',   text:'[WRITE] ✓ content/x_thread_stack_ia.md (1 450 chars)' },
+  { t:'08:00:29', type:'info', text:'[WRITE] Concept #1 → LinkedIn long-form post …' },
+  { t:'08:00:31', type:'ok',   text:'[WRITE] ✓ content/linkedin_stack_ia.md (820 mots, hook + 5 sections + CTA)' },
+  { t:'08:00:31', type:'info', text:'[WRITE] Concept #4 → short video script 60s …' },
+  { t:'08:00:33', type:'ok',   text:'[WRITE] ✓ content/video_script_agent.md (script + visual directions + voice notes)' },
+  { t:'08:00:33', type:'cmd',  text:'$ agent exec content.review --files=content/*.md --checks=brand_voice,factual,cta_present' },
+  { t:'08:00:35', type:'info', text:'[REVIEW] brand_voice … ok  |  factual … ok  |  cta_present … ok' },
+  { t:'08:00:35', type:'warn', text:'[REVIEW] ⚠ linkedin post: ouverture trop générique → auto-rewrite hook …' },
+  { t:'08:00:36', type:'ok',   text:'[REVIEW] ✓ hook rewritten: "Hier à 8h, pendant que je dormais, mon agent a répondu à 3 clients…"' },
+  { t:'08:00:36', type:'ok',   text:'[PHASE 4] done · 3 files · 1 auto-fix · elapsed 10s' },
+  { t:'', type:'blank' },
+
+  { t:'08:00:37', type:'section', text:'── PHASE 5 · IMAGE GENERATION ─────────────────────────' },
+  { t:'08:00:37', type:'cmd',  text:'$ agent exec image.generate --model=gpt-image-1 --count=6 --brief=content/video_script_agent.md' },
+  { t:'08:00:38', type:'info', text:'[IMGGEN] Extracting visual prompts from script …' },
+  { t:'08:00:38', type:'info', text:'[IMGGEN] Prompts generated:' },
+  { t:'08:00:38', type:'out',  text:'  img_01: "Raspberry Pi glowing at night, terminal green light, cinematic macro"' },
+  { t:'08:00:38', type:'out',  text:'  img_02: "Minimalist desk setup, single developer, code on screen, morning light"' },
+  { t:'08:00:38', type:'out',  text:'  img_03: "Abstract AI node network, dark background, teal accent nodes"' },
+  { t:'08:00:38', type:'out',  text:'  img_04: "Shopify storefront wireframe exploded view, clean isometric"' },
+  { t:'08:00:38', type:'out',  text:'  img_05: "3D printer timelapse composite, studio lighting"' },
+  { t:'08:00:38', type:'out',  text:'  img_06: "Split screen: phone notifications vs calm sleeping person"' },
+  { t:'08:00:39', type:'cmd',  text:'$ agent exec image.batch --async=true --quality=hd --size=1792x1024' },
+  { t:'08:00:39', type:'info', text:'[IMGGEN] Batch submitted to GPT-Images API … job_id: img-batch-20260428-0001' },
+  { t:'', type:'bar', label:'generating', pct:100, color:'cyan' },
+  { t:'08:00:52', type:'ok',   text:'[IMGGEN] 6/6 images received → assets/raw/' },
+  { t:'08:00:52', type:'cmd',  text:'$ agent exec image.select --criteria=viral_potential,brand_fit,no_text_artifacts --pick=3' },
+  { t:'08:00:53', type:'info', text:'[SELECT] Scoring 6 images via vision model …' },
+  { t:'08:00:55', type:'ok',   text:'[SELECT] Selected: img_01 (9.1) · img_02 (8.8) · img_03 (8.4)' },
+  { t:'08:00:55', type:'info', text:'[SELECT] Rejected: img_04 (text artifacts) · img_05 (6.9) · img_06 (7.1)' },
+  { t:'08:00:55', type:'ok',   text:'[PHASE 5] done · 6 generated · 3 selected · elapsed 18s' },
+  { t:'', type:'blank' },
+
+  { t:'08:01:13', type:'section', text:'── PHASE 6 · VIDEO PRODUCTION ──────────────────────────' },
+  { t:'08:01:13', type:'cmd',  text:'$ agent exec video.compose --images=assets/selected/ --script=content/video_script_agent.md --model=seedance-v2' },
+  { t:'08:01:14', type:'info', text:'[VIDEO] Uploading 3 selected images to Seedance API …' },
+  { t:'08:01:15', type:'ok',   text:'[VIDEO] Upload ✓ · Submitting generation job …' },
+  { t:'08:01:15', type:'info', text:'[VIDEO] Config: 60s · aspect=9:16 · motion=dynamic · voice=none · music=lo-fi_chill' },
+  { t:'', type:'bar', label:'rendering seedance-v2', pct:100, color:'purple' },
+  { t:'08:03:44', type:'ok',   text:'[VIDEO] ✓ assets/video_agent_story_v1.mp4 (58.3s · 47.2MB)' },
+  { t:'08:03:44', type:'cmd',  text:'$ agent exec video.review --file=assets/video_agent_story_v1.mp4 --checks=duration,hook_3s,cta_end' },
+  { t:'08:03:45', type:'ok',   text:'[REVIEW] duration: 58s ✓ · hook_3s: strong motion ✓ · cta_end: present ✓' },
+  { t:'08:03:45', type:'cmd',  text:'$ agent exec video.thumbnail --frame=2.4s --overlay=none --output=assets/thumb_v1.jpg' },
+  { t:'08:03:46', type:'ok',   text:'[THUMB] ✓ assets/thumb_v1.jpg extracted' },
+  { t:'08:03:46', type:'ok',   text:'[PHASE 6] done · 1 video · 1 thumb · elapsed 2m31s' },
+  { t:'', type:'blank' },
+
+  { t:'08:03:47', type:'section', text:'── PHASE 7 · SCHEDULING & PUBLISH ─────────────────────' },
+  { t:'08:03:47', type:'cmd',  text:'$ agent exec schedule.plan --content=content/ --assets=assets/ --calendar=true' },
+  { t:'08:03:48', type:'info', text:'[SCHEDULE] Optimal slots calculated (engagement model v3):' },
+  { t:'08:03:48', type:'out',  text:'  X thread     → today 12:30 CET   (peak audience window)' },
+  { t:'08:03:48', type:'out',  text:'  LinkedIn post → today 08:45 CET   (early professional window)' },
+  { t:'08:03:48', type:'out',  text:'  TikTok video  → today 19:00 CET   (prime reels slot)' },
+  { t:'08:03:48', type:'out',  text:'  Instagram reel→ today 19:05 CET   (cross-post +2min delay)' },
+  { t:'08:03:49', type:'cmd',  text:'$ agent exec publish --platform=linkedin --file=content/linkedin_stack_ia.md --schedule="08:45"' },
+  { t:'08:03:50', type:'ok',   text:'[PUBLISH] ✓ LinkedIn queued · post_id: li-20260428-0047' },
+  { t:'08:03:50', type:'cmd',  text:'$ agent exec publish --platform=twitter --file=content/x_thread_stack_ia.md --schedule="12:30"' },
+  { t:'08:03:51', type:'ok',   text:'[PUBLISH] ✓ X/Twitter queued · thread_id: tw-20260428-2319' },
+  { t:'08:03:51', type:'cmd',  text:'$ agent exec publish --platform=tiktok,instagram --file=assets/video_agent_story_v1.mp4 --thumb=assets/thumb_v1.jpg --schedule="19:00","19:05"' },
+  { t:'08:03:53', type:'ok',   text:'[PUBLISH] ✓ TikTok queued · ✓ Instagram queued' },
+  { t:'08:03:53', type:'ok',   text:'[PHASE 7] done · 4 posts scheduled · elapsed 6s' },
+  { t:'', type:'blank' },
+
+  { t:'08:03:54', type:'section', text:'── PHASE 8 · MONITORING & AUTO-REPLY SETUP ────────────' },
+  { t:'08:03:54', type:'cmd',  text:'$ agent exec monitor.arm --triggers=reply,comment,mention --window=6h --auto-reply=tier1' },
+  { t:'08:03:55', type:'ok',   text:'[MONITOR] Watcher armed on 4 scheduled posts' },
+  { t:'08:03:55', type:'info', text:'[MONITOR] Auto-reply rules loaded:' },
+  { t:'08:03:55', type:'out',  text:'  tier1 (≤1h)  : reply auto si intent=question → LLM draft + send' },
+  { t:'08:03:55', type:'out',  text:'  tier2 (1-6h) : reply auto si intent=compliment → like + short thanks' },
+  { t:'08:03:55', type:'out',  text:'  tier3 (>6h)  : flag for manual review → push notification' },
+  { t:'08:03:55', type:'cmd',  text:'$ agent exec kpi.snapshot --metrics=mrr,churn,new_signups,github_stars' },
+  { t:'08:03:57', type:'info', text:'[KPI] Fetching from Supabase + Stripe …' },
+  { t:'08:03:58', type:'ok',   text:'[KPI] Snapshot:  MRR 1 247€ (+3.1%)  ·  Churn 2.1%  ·  New signups 7  ·  Stars +14' },
+  { t:'08:03:58', type:'warn', text:'[KPI] ⚠ Churn 2.1% > seuil 2.0% → ticket créé: investigate-churn-20260428' },
+  { t:'08:03:59', type:'cmd',  text:'$ agent exec report.daily --output=logs/daily_20260428.md --push=notion' },
+  { t:'08:04:01', type:'ok',   text:'[REPORT] ✓ logs/daily_20260428.md · ✓ pushed to Notion page "Daily Ops"' },
+  { t:'08:04:01', type:'ok',   text:'[PHASE 8] done · elapsed 7s' },
+  { t:'', type:'blank' },
+
+  { t:'08:04:02', type:'section', text:'══════════════════════════════════════════════════════' },
+  { t:'08:04:02', type:'section', text:'  CYCLE COMPLETE' },
+  { t:'08:04:02', type:'ok',   text:'[SUMMARY]' },
+  { t:'08:04:02', type:'out',  text:'  Inbox     : 3 emails sent · 1 DM answered' },
+  { t:'08:04:02', type:'out',  text:'  Content   : 3 pieces written & reviewed' },
+  { t:'08:04:02', type:'out',  text:'  Images    : 6 generated · 3 selected' },
+  { t:'08:04:02', type:'out',  text:'  Video     : 1 × 60s produit (Seedance v2)' },
+  { t:'08:04:02', type:'out',  text:'  Posts     : 4 scheduled (LinkedIn · X · TikTok · IG)' },
+  { t:'08:04:02', type:'out',  text:'  Monitor   : watcher actif · auto-reply armed' },
+  { t:'08:04:02', type:'out',  text:'  KPI       : snapshot ok · 1 alerte churn' },
+  { t:'08:04:03', type:'ok',   text:'  Total elapsed: 4m 03s  ·  API calls: 47  ·  tokens used: 28 412' },
+  { t:'08:04:03', type:'dim',  text:'  Next cycle: 08:00 tomorrow  ·  pid 14823 sleeping …' },
+  { t:'08:04:03', type:'section', text:'══════════════════════════════════════════════════════' },
+  { t:'08:04:04', type:'prompt', text:'$ █' }
+];
+
+const screen = document.getElementById('screen');
+let idx = 0, paused = false, timer = null;
+const speedMap = [0, 900, 500, 220, 80, 20];
+
+function speedVal() { return speedMap[parseInt(document.getElementById('speed').value)] || 220; }
+
+function renderLine(l) {
+  if (l.type === 'blank') { const d = document.createElement('div'); d.style.height='6px'; screen.appendChild(d); return; }
+  if (l.type === 'bar') {
+    const d = document.createElement('div');
+    d.className = 'bar-wrap';
+    d.innerHTML = `<div class="bar"><span style="color:var(--dim);font-size:11px;">[${l.label}]</span><span class="progress"><span class="fill ${l.color||''}" id="fill_${idx}" style="width:0%"></span></span><span style="color:var(--dim);font-size:11px;" id="pct_${idx}">0%</span></div>`;
+    screen.appendChild(d);
+    let p = 0;
+    const fi = d.querySelector(`#fill_${idx}`), pi = d.querySelector(`#pct_${idx}`);
+    const iv = setInterval(() => {
+      p = Math.min(p + Math.random()*12+4, 100);
+      fi.style.width = p.toFixed(0) + '%';
+      pi.textContent = p.toFixed(0) + '%';
+      if (p >= 100) clearInterval(iv);
+    }, 80);
+    return;
+  }
+  const div = document.createElement('div');
+  if (l.type === 'cmd') {
+    div.className = 'line';
+    div.innerHTML = `<span class="ts">${l.t}</span><span class="prompt">❯ </span><span class="cmd">${l.text}</span>`;
+  } else if (l.type === 'out') {
+    div.innerHTML = `<span class="out">${l.text}</span>`;
+  } else if (l.type === 'prompt') {
+    div.className = 'line';
+    div.innerHTML = `<span class="ts">${l.t}</span><span class="prompt">${l.text}</span>`;
+  } else {
+    const cls = l.type === 'section' ? 'section' : l.type === 'ok' ? 'ok' : l.type === 'warn' ? 'warn' : l.type === 'err' ? 'err' : l.type === 'dim' ? 'dim' : 'info';
+    div.className = 'line';
+    div.innerHTML = `<span class="ts">${l.t||''}</span><span class="${cls}">${l.text}</span>`;
+  }
+  screen.appendChild(div);
+  screen.scrollTop = screen.scrollHeight;
+}
+
+function next() {
+  if (paused || idx >= lines.length) return;
+  renderLine(lines[idx++]);
+  if (idx < lines.length) timer = setTimeout(next, speedVal());
+}
+
+document.getElementById('btn-play').addEventListener('click', () => {
+  paused = false;
+  if (idx < lines.length) { clearTimeout(timer); next(); }
+});
+document.getElementById('btn-pause').addEventListener('click', () => { paused = true; clearTimeout(timer); });
+document.getElementById('btn-reset').addEventListener('click', () => {
+  paused = true; clearTimeout(timer);
+  screen.innerHTML = ''; idx = 0;
+  paused = false; next();
+});
+
+next();
+</script>

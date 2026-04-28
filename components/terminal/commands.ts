@@ -11,8 +11,7 @@ export const BUILTIN_COMMANDS: Record<string, CommandFn> = {
         value: `  ${ctx.availableCommands.join("  ")}`,
       },
       { type: "dim", value: "  shortcuts: [tab] autocomplete, [↑↓] history, [ctrl+c|esc] interrupt, [ctrl+l] clear" },
-      { type: "dim", value: '  examples: exec npm run build · claude code "design onboarding flow"' },
-      { type: "dim", value: `  command packs: ${ctx.loadedPacks.length} loaded (use 'packs' for details)` },
+      { type: "dim", value: '  examples: exec npm run build · claude code "design onboarding flow" · cmds · cmd 1' },
     ],
   }),
   about: async () => ({
@@ -73,7 +72,6 @@ export const BUILTIN_COMMANDS: Record<string, CommandFn> = {
       { type: "info", value: "Terminal state" },
       { type: "out", value: `cwd        ${ctx.cwd}` },
       { type: "out", value: `history    ${ctx.history.length} commands` },
-      { type: "out", value: `packs      ${ctx.loadedPacks.length} loaded` },
       { type: "dim", value: "runtime    virtual cascade engine enabled" },
       { type: "dim", value: "interrupt  Ctrl+C or Esc" },
     ],
@@ -131,26 +129,6 @@ export const BUILTIN_COMMANDS: Record<string, CommandFn> = {
 
     return {
       stream: buildClaudeCodeStream(args.slice(1).join(" "), ctx.cwd),
-    };
-  },
-  packs: async (_, ctx) => {
-    if (ctx.loadedPacks.length === 0) {
-      return {
-        lines: [
-          { type: "info", value: "No command packs loaded." },
-          { type: "dim", value: "Import a .json pack to add preconfigured virtual commands." },
-        ],
-      };
-    }
-
-    return {
-      lines: [
-        { type: "info", value: "Loaded command packs" },
-        ...ctx.loadedPacks.map((pack) => ({
-          type: "out" as const,
-          value: `  ${pack.title} (${pack.id}) - ${pack.commandCount} commands`,
-        })),
-      ],
     };
   },
   clear: async () => ({ lines: [], clearBefore: true }),

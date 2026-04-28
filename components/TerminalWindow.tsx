@@ -4,7 +4,6 @@ import { Maximize2, Minimize2, Moon, Square, Sun } from "lucide-react";
 import Image from "next/image";
 import {
   useMemo,
-  useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -37,7 +36,7 @@ const SLASH_ITEMS: SlashItem[] = [
     id: "claude",
     group: "Agent",
     label: "claude code",
-    command: "claude code ",
+    command: "claude code",
     description: "Run agent-style cascade",
   },
   {
@@ -102,13 +101,6 @@ const SLASH_ITEMS: SlashItem[] = [
     label: "stack",
     command: "stack",
     description: "Show tech stack",
-  },
-  {
-    id: "packs",
-    group: "Info",
-    label: "packs",
-    command: "packs",
-    description: "List loaded command packs",
   },
   {
     id: "history",
@@ -253,12 +245,8 @@ export default function TerminalWindow() {
     spinnerGlyph,
     outputRef,
     inputRef,
-    quickActions,
     handleKeyDown,
-    runQuickAction,
-    importCommandPack,
   } = useTerminalRuntime();
-  const importInputRef = useRef<HTMLInputElement>(null);
 
   const [terminalSize, setTerminalSize] = useState<TerminalSize>("md");
   const [terminalTheme, setTerminalTheme] = useState<TerminalTheme>("light");
@@ -427,54 +415,10 @@ export default function TerminalWindow() {
 
           <div
             ref={outputRef}
-            className={`${activePreset.outputHeightClass} overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 [&::-webkit-scrollbar-thumb]:rounded-sm [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5 ${
-              isDark
-                ? "bg-[#101419] [&::-webkit-scrollbar-thumb]:bg-[#485266]"
-                : "bg-[var(--window-panel)] [&::-webkit-scrollbar-thumb]:bg-[#c2beb6]"
+            className={`${activePreset.outputHeightClass} terminal-scrollbar-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 ${
+              isDark ? "bg-[#101419]" : "bg-[var(--window-panel)]"
             }`}
           >
-            <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
-              {quickActions.map((action) => (
-                <button
-                  key={`${action.label}:${action.command}`}
-                  type="button"
-                  onClick={() => runQuickAction(action)}
-                  className={`shrink-0 rounded-md border px-2.5 py-1 font-mono text-[11px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7f90b3] ${
-                    isDark
-                      ? "border-[#37414f] bg-[#1a1f27] text-[#adb4bf] hover:bg-[#252c36] hover:text-[#e2e6ed]"
-                      : "border-[#d3cec2] bg-[#f2efe8] text-[#5f6368] hover:bg-[#e9e4da] hover:text-[#2b2e32]"
-                  }`}
-                >
-                  {action.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => importInputRef.current?.click()}
-                className={`shrink-0 rounded-md border border-dashed px-2.5 py-1 font-mono text-[11px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7f90b3] ${
-                  isDark
-                    ? "border-[#48515d] bg-[#171d24] text-[#9ea6b3] hover:bg-[#252c36] hover:text-[#e2e6ed]"
-                    : "border-[#b5aea2] bg-[#f7f4ee] text-[#6a6f77] hover:bg-[#eee8dd] hover:text-[#2b2e32]"
-                }`}
-              >
-                import json
-              </button>
-              <input
-                ref={importInputRef}
-                type="file"
-                accept=".json,application/json"
-                className="sr-only"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (!file) {
-                    return;
-                  }
-                  void importCommandPack(file);
-                }}
-              />
-            </div>
-
             {lines.map((line, index) => (
               <OutputLine
                 key={line.id}
@@ -492,7 +436,7 @@ export default function TerminalWindow() {
               </div>
             )}
 
-            <div className="relative mt-2 flex items-center gap-0">
+            <div className={`relative mt-2 flex items-center gap-0 ${isLoading ? "invisible" : ""}`}>
               <span className={`font-mono text-base font-medium whitespace-nowrap ${promptClass}`}>
                 steven@macbook-pro {cwd} %
               </span>

@@ -4,7 +4,6 @@ export const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", 
 
 export const STORAGE_HISTORY_KEY = "macos-terminal.history";
 export const STORAGE_CWD_KEY = "macos-terminal.cwd";
-export const STORAGE_COMMAND_PACKS_KEY = "macos-terminal.command-packs";
 
 export const BASE_QUICK_ACTIONS: QuickAction[] = [
   { label: "help", command: "help" },
@@ -13,8 +12,12 @@ export const BASE_QUICK_ACTIONS: QuickAction[] = [
   { label: "models", command: "models" },
   { label: "exec npm run build", command: "exec npm run build" },
   {
-    label: "claude code...",
+    label: "claude code",
     command: "claude code visualize all states of onboarding and push each screen to figma",
+  },
+  {
+    label: "agentic runtime 8h",
+    command: "exec agent boot --profile=business-full --dry-run=false",
   },
   { label: "projects", command: "projects" },
   { label: "stack", command: "stack" },
@@ -48,7 +51,8 @@ export const BUILTIN_COMMAND_NAMES = [
   "projects",
   "stack",
   "contact",
-  "packs",
+  "cmds",
+  "cmd",
   "clear",
 ] as const;
 

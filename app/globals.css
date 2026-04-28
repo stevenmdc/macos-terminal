@@ -57,3 +57,12 @@ body {
 .terminal-line-reveal {
   animation: terminalLineReveal 140ms ease-out both;
 }
+
+.terminal-scrollbar-hidden {
+  scrollbar-width: none;
+}
+
+.terminal-scrollbar-hidden::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
